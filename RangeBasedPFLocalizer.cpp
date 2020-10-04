@@ -85,17 +85,17 @@ void CRangeBasedPFLocalizer::generateSensorModel()
 		}
 	}
 
-	//float sigma_h;
-	//for (int h = 0; h < 256; h++)
-	//{
-	//	sigma_h = 8;
-	//	for (int k = 0; k < 256; k++)
-	//	{
-	//		CRangeBasedPFLocalizer::m_fRangeFPro[h][k] = 1.0f / (sqrt(2.0f*(float)M_PI*sigma_h))*exp(-((float)h*0.01f - (float)k*0.01f)*((float)h*0.01f - (float)k*0.01f) / 2.0f / sigma_h / sigma_h);
+	float sigma_h;
+	for (int h = 0; h < 256; h++)
+	{
+		sigma_h = 8;
+		for (int k = 0; k < 256; k++)
+		{
+			CRangeBasedPFLocalizer::m_fRangeFPro[h][k] = 1.0f / (sqrt(2.0f*(float)M_PI*sigma_h))*exp(-((float)h*0.01f - (float)k*0.01f)*((float)h*0.01f - (float)k*0.01f) / 2.0f / sigma_h / sigma_h);
 
-	//	}
+		}
 
-	//}
+	}
 	
 	printf("Sensor model of MCL was completely generated.\n");
 }
