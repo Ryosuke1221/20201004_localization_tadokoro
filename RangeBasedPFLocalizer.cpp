@@ -2,6 +2,9 @@
 #include "RangeBasedPFLocalizer.h"
 
 float ** CRangeBasedPFLocalizer::m_fRangeMCLPro = NULL;
+float ** CRangeBasedPFLocalizer::m_fRangeFPro = NULL;
+float ** CRangeBasedPFLocalizer::m_fRangeALLPro = NULL;
+
 CRangeBasedPFLocalizer::CRangeBasedPFLocalizer(void)
 {
 		m_RobotState.initialize();
@@ -57,27 +60,53 @@ void CRangeBasedPFLocalizer::generateSensorModel()
 // 		}
 // 	}
 
+	CRangeBasedPFLocalizer::m_fRangeFPro = (float**)calloc(256, sizeof(float*));
+
+	for (i = 0; i < 256; i++) {
+		CRangeBasedPFLocalizer::m_fRangeFPro[i] = (float*)calloc(256, sizeof(float));
+	}
+	int mmm = 256;
+
+
 
 	float sigma;
-	for(int i=0;i<(int)(dMaxDistanceMM/10.0)+1;i++) 
+	for (int i = 0; i < (int)(dMaxDistanceMM / 10.0) + 1; i++)
 	{	// expected distance
 		sigma = 0.006f*(float)i*0.01f + 0.150f;
-		for(int j=0;j<(int)(dMaxDistanceMM/10.0)+1;j++) 
+		for (int j = 0; j < (int)(dMaxDistanceMM / 10.0) + 1; j++)
 		{	// measured distance
 			//m_fRangeMCLPro[i][j] = 0.05*exp(-((float)i*0.01-(float)j*0.01)*((float)i*0.01-(float)j*0.01)/2/sigma/sigma)
 			//+ 0.005*((float)m_dMaxDistance-(float)j*10.0)/(float)m_dMaxDistance;
-			CRangeBasedPFLocalizer::m_fRangeMCLPro[i][j] = 1.0f/(sqrt(2.0f*(float)M_PI*sigma))*exp(-((float)i*0.01f - (float)j*0.01f)*((float)i*0.01f - (float)j*0.01f)/2.0f/sigma/sigma)
-				+ 0.005*((float)dMaxDistanceMM-(float)j*10.0f)/(float)dMaxDistanceMM;	
-// 			if(((float)j*10.0)>((float)dMaxDistanceMM-300.0))
-// 				CRangeBasedPFLocalizer::m_fRangeMCLPro[i][j] = (float)0.10;
-			// 모션모델의 확톩E갋㎏?과潭하여 퉩E㎏?맞춰주는 부분. (0~1.0사이 조절)*(가중치)
-			//CRangeBasedPFLocalizer::m_fRangeMCLPro[i][j] *= (10.0 * 1.5);
+			CRangeBasedPFLocalizer::m_fRangeMCLPro[i][j] = 1.0f / (sqrt(2.0f*(float)M_PI*sigma))*exp(-((float)i*0.01f - (float)j*0.01f)*((float)i*0.01f - (float)j*0.01f) / 2.0f / sigma / sigma)+ 0.005*((float)dMaxDistanceMM - (float)j*10.0f) / (float)dMaxDistanceMM;
+			// 			if(((float)j*10.0)>((float)dMaxDistanceMM-300.0))
+			// 				CRangeBasedPFLocalizer::m_fRangeMCLPro[i][j] = (float)0.10;
+						// 모션모델의 확톩E갋㎏?과潭하여 퉩E㎏?맞춰주는 부분. (0~1.0사이 조절)*(가중치)
+						//CRangeBasedPFLocalizer::m_fRangeMCLPro[i][j] *= (10.0 * 1.5);
 		}
 	}
 
+	//float sigma_h;
+	//for (int h = 0; h < 256; h++)
+	//{
+	//	sigma_h = 8;
+	//	for (int k = 0; k < 256; k++)
+	//	{
+	//		CRangeBasedPFLocalizer::m_fRangeFPro[h][k] = 1.0f / (sqrt(2.0f*(float)M_PI*sigma_h))*exp(-((float)h*0.01f - (float)k*0.01f)*((float)h*0.01f - (float)k*0.01f) / 2.0f / sigma_h / sigma_h);
+
+	//	}
+
+	//}
+	
 	printf("Sensor model of MCL was completely generated.\n");
 }
 
+float CRangeBasedPFLocalizer::getFeatureValue(float x, float y)
+{
+	float feature = 0.;
+	if (10 <= x && x <= 15 && 1 <= y && y <= 2)feature = 1.;
+
+	return feature;
+}
 
 
 void CRangeBasedPFLocalizer::estimateState()
@@ -310,7 +339,7 @@ void CRangeBasedPFLocalizer::update()
 
 void CRangeBasedPFLocalizer::resampling()
 {
-	struct Accumulation{	// 샘플 재분포를 위한 확톩E?누적에 사퓖E풔?변펯E
+	struct Accumulation{	
 		double dSum;
 		double x;
 		double y;
@@ -335,7 +364,6 @@ void CRangeBasedPFLocalizer::resampling()
 // 	}
 // 	else
 	{
-		// 확톩E?따른 resampling을 위한 확톩E㈏갋
 		nNoOfAccumulated=0;
 		for (i =0; i<m_nParticleNum; i++) 
 		{
@@ -354,16 +382,10 @@ void CRangeBasedPFLocalizer::resampling()
 				m_pParticles[i].dPro =  1.0/(double)m_nParticleNum;
 			return ;
 		}
-
-		// 샘플의 위치의 표준폴邪를 이퓖E臼?다음 단컖E샘플의 갯수를 계퍊E
 		CalculateNoOfSamples();
-
-		// 샘플 갯수에 따른 정규화된 확톩E?
 
 		int nTemp=0;
 
-		// 확톩Eだ?높은 샘플은 많이 복사하컖E 확톩Eだ?낮은 샘플은 적게 복사하는 부분.
-		// 지정한 갯펯Em_nSampleNum)만큼 새로퓖E샘플 복퍊E
 		while(nTemp<m_nParticleNum) {
 			nCnt = 0;
 			dRandPro = (double)rand()/(double)RAND_MAX;
@@ -375,11 +397,8 @@ void CRangeBasedPFLocalizer::resampling()
 			m_pParticles[nTemp].th = pAccumulation[nCnt].th;
 			m_pParticles[nTemp].dPro =  1.0/(double)m_nParticleNum;
 			nTemp++;
-
 		}
-
 	}
-	// 작업퓖E동적배열 삭제.
 	free (pAccumulation);
 	pAccumulation = NULL;
 }
@@ -706,19 +725,12 @@ void CRangeBasedPFLocalizer::CalculateNoOfSamples()
 
 void CRangeBasedPFLocalizer::estimation()
 {
-
 	double dSum = 0.0;
-
-	// 180도 지점에서 각도가 179에서 -179로 변하는 문제를 처리하콅E위해.
 	// 	if (m_dSamplePos[2]>120*D2R || m_dSamplePos[2]<-120*D2R) bAngleCalculationMode = true;
 	// 	else bAngleCalculationMode = false;
-	// 새로퓖E위치를 계퍊E歐갋위해 변펯E초기화.
-
 	double dWSumX = 0.0;
 	double dWSumY = 0.0;
 	double dWSumZ = 0.0;
-
-	// 확톩Eぐ갋위치값을 이퓖E?평균.
 	// calculating robot pose by averaging poses of samples
 	double dx, dy;
 	dx = 0; dy = 0;
@@ -728,13 +740,11 @@ void CRangeBasedPFLocalizer::estimation()
 		dWSumX += m_pParticles[i].x*m_pParticles[i].dPro;
 		dWSumY += m_pParticles[i].y*m_pParticles[i].dPro;
 		
-
 		//if(bAngleCalculationMode && m_stSample[i].t<0) m_dSamplePos[2] += (m_stSample[i].t+2.0*M_PI)*m_stSample[i].dPro;
 		//else m_dSamplePos[2] += m_stSample[i].t*m_stSample[i].dPro;
 		dx += cos(m_pParticles[i].th)*m_pParticles[i].dPro;
 		dy += sin(m_pParticles[i].th)*m_pParticles[i].dPro;
 	}
-
 	double dCov[3][3] = {0};
 	double xe = 0.0;
 	double ye = 0.0;

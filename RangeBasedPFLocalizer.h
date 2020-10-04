@@ -52,6 +52,8 @@ private:
 
 	Parameter m_Param;
 	static float ** m_fRangeMCLPro;
+	static float ** m_fRangeFPro;
+	static float ** m_fRangeALLPro;
 	PolarRangeData m_AccumulatedMovement;
 	Particle * m_pParticles;
 	int m_nParticleNum;
@@ -69,6 +71,7 @@ private:
 	void predictRangeData(Particle Sample, vector<PolarRangeData> * pPredictedPolarRangeData  );
 	void doRayTracing(int x_1, int x_2, int y_1, int y_2, int *hit_x, int *hit_y);
 	bool isTimeToUpdate();
+	float getFeatureValue(float x, float y);
 public:
 
 	//Input operation
